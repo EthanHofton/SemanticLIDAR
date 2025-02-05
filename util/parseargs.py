@@ -20,11 +20,6 @@ def add_visualize_parser(subparsers):
                                   help='Offset from start of sqeunce',
                                   default=0,
                                   required=False)
-    visualize_parser.add_argument('--output',
-                                  type=str,
-                                  help='Output file for visualized lidar cloud',
-                                  default=None,
-                                  required=False)
     visualize_parser.add_argument('-s',
                                   '--sequence',
                                   type=str,
