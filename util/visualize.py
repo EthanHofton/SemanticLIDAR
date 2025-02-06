@@ -2,7 +2,7 @@ from util.auxiliary.laserscan import LaserScan, SemLaserScan
 import open3d as o3d
 import os
 import yaml
-from args import Args
+from args.args import Args
 
 def visualize():
     # fix sequence name

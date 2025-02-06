@@ -8,7 +8,7 @@ class Args():
         cls.args = args
 
         # visualize config
-        if getattr(cls.args, "command", None) == "visualize":
+        if getattr(cls.args, "command", None) == "visualize" or getattr(cls.args, "command", None) == "train":
             # open yaml config file
             if getattr(cls.args, "verbose", False):
                 print(f"Opening config file {cls.args.config}")
@@ -18,4 +18,4 @@ class Args():
                     CTX = yaml.safe_load(file)
                 cls.args.config = CTX
             except Exception as e:
-                raise Exception(f"Error opening config file: {cls._config.config}") from e
+                raise Exception(f"Error opening config file: {cls.args.config}") from e

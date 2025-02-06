@@ -1,7 +1,3 @@
-import argparse
-import os
-import yaml
-
 def add_visualize_parser(subparsers):
     visualize_parser = subparsers.add_parser('visualize')
     visualize_parser.add_argument('-d',
@@ -36,16 +32,4 @@ def add_visualize_parser(subparsers):
                                   action='store_true',
                                   help='Give verbose output to the terminal')
     visualize_parser.set_defaults(command='visualize')
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(prog='SemanticKITTI solution',
-                                     description='Training, Testing and util tools for SemanticKITTI solution')
-    subparsers = parser.add_subparsers(title='subcommands',
-                                       description='The subcommands of the program',
-                                       help='additional help',
-                                       required=True)
-    add_visualize_parser(subparsers)
-
-    return parser.parse_args()
 

@@ -1,6 +1,7 @@
 *.pth
 *.DS_Store
 .venv/
+**/__pycache__/
 
 # READ THIS BEFORE YOU REFACTOR ME
 #
