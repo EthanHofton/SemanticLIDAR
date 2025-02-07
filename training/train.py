@@ -16,14 +16,11 @@ def train_epoch(epoch, model, optimizer, loss_fn, train_dataloader):
     model.train()
 
     epoch_loss = 0
-    epoch_iou = 0
-    iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
+    epoch_iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
+    epoch_iou.reset()
 
     with tqdm(train_dataloader, unit="batch") as tepoch:
         for batch_idx, (data, target, _) in enumerate(tepoch):
-            batch_loss = 0
-            batch_acc = 0
-
             tepoch.set_description(f"Epoch {epoch}")
 
             data, target = data.to(Args.args.device), target.to(Args.args.device)
@@ -35,18 +32,14 @@ def train_epoch(epoch, model, optimizer, loss_fn, train_dataloader):
 
             preds = torch.argmax(logits, dim=1)
 
-            batch_iou = iou(preds, target).item()
-            batch_loss = loss.item()
-
-            epoch_loss += batch_loss
-            epoch_iou += batch_iou
+            epoch_iou.update(preds, target)
+            epoch_loss += loss.item()
             
             loss.backward()
             optimizer.step()
-            tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1), epoch_iou=100. * (epoch_iou / (batch_idx+1)))
+            tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1), epoch_iou=100. * epoch_iou.compute().item())
 
     epoch_loss /= len(train_dataloader)
-    epoch_acc /= len(train_dataloader)
             
 
 def train():
