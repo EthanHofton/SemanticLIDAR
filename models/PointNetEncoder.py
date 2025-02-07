@@ -35,6 +35,8 @@ class PointNetEncoder(nn.Module):
             x = x.transpose(2, 1)
             x = torch.bmm(x, trans_feat)
             x = x.transpose(2, 1)
+        else:
+            trans_feat = None
 
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.bn3(self.conv3(x))

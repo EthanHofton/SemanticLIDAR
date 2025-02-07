@@ -6,8 +6,8 @@ from models.PointNetEncoder import PointNetEncoder
 class PointNetSegmentation(nn.Module):
     def __init__(self, num_classes, feature_transform=False):
         super(PointNetSegmentation, self).__init__()
-        self.feature_transform = feature_transform
-        self.feat = PointNetEncoder(global_feat=False, feature_transform=feature_transform)
+        self.k = num_classes
+        self.feat = PointNetEncoder(global_feat=False, feature_transform=False)
         
         self.conv1 = nn.Conv1d(288, 128, 1)  # 256 (global) + 32 (local) = 288
         self.conv2 = nn.Conv1d(128, 64, 1)

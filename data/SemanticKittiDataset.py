@@ -75,30 +75,29 @@ class SemanticKittiDataset(Dataset):
         return self.sample_size
 
 
-# TODO: allow batching via masking
 def semantic_kitti_collate_fn(batch):
-    point_clouds, labels = zip(*batch)
+    """
+    Custom collate function to pad point clouds and labels, and create masks.
+    """
+    points, labels = zip(*batch)
     
-    # Find the maximum number of points in the batch
-    max_len = max([pc.size(0) for pc in point_clouds])
+    # Determine max number of points in the batch
+    max_points = max([pc.size(1) for pc in points])
     
-    padded_point_clouds = []
-    point_cloud_masks = []  # To keep track of the valid points (non-padded)
+    padded_points = torch.zeros(len(batch), 3, max_points)  # Shape: (batch_size, 3, max_points)
+    padded_labels = torch.zeros(len(batch), max_points, dtype=torch.long)  # Shape: (batch_size, max_points)
+    mask = torch.zeros(len(batch), max_points)  # Shape: (batch_size, max_points)
     
-    for pc in point_clouds:
-        padding = torch.zeros((max_len - pc.size(0), pc.size(1)))  # Assuming (N, 3) shape for point clouds (x, y, z)
-        padded_pc = torch.cat([pc, padding], dim=0)  # Pad the point cloud
+    for i, (point_cloud, label) in enumerate(zip(points, labels)):
+        num_points = point_cloud.size(1)
         
-        # Create a mask where 1 indicates a valid point, and 0 indicates padding
-        mask = torch.ones(max_len)
-        mask[pc.size(0):] = 0  # Set the mask values to 0 for padded points
+        # Pad the points
+        padded_points[i, :, :num_points] = point_cloud
         
-        padded_point_clouds.append(padded_pc)
-        point_cloud_masks.append(mask)
+        # Pad the labels
+        padded_labels[i, :num_points] = label
+        
+        # Create a mask: 1 for real points, 0 for padding
+        mask[i, :num_points] = 1
     
-    # Stack the point clouds and masks
-    point_clouds_batch = torch.stack(padded_point_clouds)
-    masks_batch = torch.stack(point_cloud_masks)
-    labels_batch = torch.tensor(labels)
-
-    return point_clouds_batch, masks_batch, labels_batch
+    return padded_points, padded_labels, mask
