@@ -190,19 +190,19 @@ from args.args import Args
 class STN3d(nn.Module):
     def __init__(self, channel):
         super(STN3d, self).__init__()
-        self.conv1 = torch.nn.Conv1d(channel, 32, 1)  # Reduced channel size
-        self.conv2 = torch.nn.Conv1d(32, 64, 1)  # Reduced channel size
-        self.conv3 = torch.nn.Conv1d(64, 512, 1)  # Reduced channel size
-        self.fc1 = nn.Linear(512, 256)  # Reduced size
-        self.fc2 = nn.Linear(256, 128)  # Reduced size
-        self.fc3 = nn.Linear(128, 9)  # Reduced size
+        self.conv1 = torch.nn.Conv1d(channel, 16, 1)  
+        self.conv2 = torch.nn.Conv1d(16, 32, 1)  
+        self.conv3 = torch.nn.Conv1d(32, 128, 1)  
+        self.fc1 = nn.Linear(128, 64)  
+        self.fc2 = nn.Linear(64, 32)  
+        self.fc3 = nn.Linear(32, 9)  
         self.relu = nn.ReLU()
 
-        self.bn1 = nn.BatchNorm1d(32)  # Reduced channel size
-        self.bn2 = nn.BatchNorm1d(64)  # Reduced channel size
-        self.bn3 = nn.BatchNorm1d(512)  # Reduced channel size
-        self.bn4 = nn.BatchNorm1d(256)  # Reduced size
-        self.bn5 = nn.BatchNorm1d(128)  # Reduced size
+        self.bn1 = nn.BatchNorm1d(16)  
+        self.bn2 = nn.BatchNorm1d(32)  
+        self.bn3 = nn.BatchNorm1d(128)  
+        self.bn4 = nn.BatchNorm1d(64)  
+        self.bn5 = nn.BatchNorm1d(32)  
 
     def forward(self, x):
         batchsize = x.size()[0]
@@ -210,7 +210,7 @@ class STN3d(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
         x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 512)  # Reduced size
+        x = x.view(-1, 128)
 
         x = F.relu(self.bn4(self.fc1(x)))
         x = F.relu(self.bn5(self.fc2(x)))
@@ -228,16 +228,14 @@ class PointNetEncoder(nn.Module):
     def __init__(self, global_feat=True, feature_transform=False, channel=3):
         super(PointNetEncoder, self).__init__()
         self.stn = STN3d(channel)
-        self.conv1 = torch.nn.Conv1d(channel, 32, 1)  # Reduced channel size
-        self.conv2 = torch.nn.Conv1d(32, 64, 1)  # Reduced channel size
-        self.conv3 = torch.nn.Conv1d(64, 512, 1)  # Reduced channel size
-        self.bn1 = nn.BatchNorm1d(32)  # Reduced channel size
-        self.bn2 = nn.BatchNorm1d(64)  # Reduced channel size
-        self.bn3 = nn.BatchNorm1d(512)  # Reduced channel size
+        self.conv1 = torch.nn.Conv1d(channel, 16, 1)  
+        self.conv2 = torch.nn.Conv1d(16, 32, 1)  
+        self.conv3 = torch.nn.Conv1d(32, 128, 1)  
+        self.bn1 = nn.BatchNorm1d(16)  
+        self.bn2 = nn.BatchNorm1d(32)  
+        self.bn3 = nn.BatchNorm1d(128)  
         self.global_feat = global_feat
         self.feature_transform = feature_transform
-        # if self.feature_transform:
-        #     self.fstn = STNkd(k=32)  # Reduced channel size
 
     def forward(self, x):
         B, D, N = x.size()
@@ -252,23 +250,16 @@ class PointNetEncoder(nn.Module):
         x = x.transpose(2, 1)
         x = F.relu(self.bn1(self.conv1(x)))
 
-        # if self.feature_transform:
-        #     trans_feat = self.fstn(x)
-        #     x = x.transpose(2, 1)
-        #     x = torch.bmm(x, trans_feat)
-        #     x = x.transpose(2, 1)
-        # else:
         trans_feat = None
-
         pointfeat = x
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.bn3(self.conv3(x))
         x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 512)  # Reduced size
+        x = x.view(-1, 128)  
         if self.global_feat:
             return x, trans, trans_feat
         else:
-            x = x.view(-1, 512, 1).repeat(1, 1, N)
+            x = x.view(-1, 128, 1).repeat(1, 1, N)
             return torch.cat([x, pointfeat], 1), trans, trans_feat
 
 
@@ -277,13 +268,13 @@ class get_model(nn.Module):
         super(get_model, self).__init__()
         self.k = num_class
         self.feat = PointNetEncoder(global_feat=False, feature_transform=False, channel=3)
-        self.conv1 = torch.nn.Conv1d(544, 256, 1)  # Reduced input size
-        self.conv2 = torch.nn.Conv1d(256, 128, 1)  # Reduced channel size
-        self.conv3 = torch.nn.Conv1d(128, 64, 1)  # Reduced channel size
-        self.conv4 = torch.nn.Conv1d(64, self.k, 1)
-        self.bn1 = nn.BatchNorm1d(256)  # Reduced size
-        self.bn2 = nn.BatchNorm1d(128)  # Reduced size
-        self.bn3 = nn.BatchNorm1d(64)  # Reduced size
+        self.conv1 = torch.nn.Conv1d(144, 64, 1)  
+        self.conv2 = torch.nn.Conv1d(64, 32, 1)  
+        self.conv3 = torch.nn.Conv1d(32, 16, 1)  
+        self.conv4 = torch.nn.Conv1d(16, self.k, 1)
+        self.bn1 = nn.BatchNorm1d(64)  
+        self.bn2 = nn.BatchNorm1d(32)  
+        self.bn3 = nn.BatchNorm1d(16)  
 
     def forward(self, x):
         batchsize = x.size()[0]
@@ -315,4 +306,3 @@ def feature_transform_reguliarzer(trans):
     I = torch.eye(d)[None, :, :]
     loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2, 1)) - I, dim=(1, 2)))
     return loss
-

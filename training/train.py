@@ -9,14 +9,15 @@ from args.args import Args
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from torchmetrics import JaccardIndex
 
 
 def train_epoch(epoch, model, optimizer, loss_fn, train_dataloader):
     model.train()
 
     epoch_loss = 0
-    epoch_acc = 0
-    total_samples = 0
+    epoch_iou = 0
+    iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
 
     with tqdm(train_dataloader, unit="batch") as tepoch:
         for batch_idx, (data, target, _) in enumerate(tepoch):
@@ -32,23 +33,20 @@ def train_epoch(epoch, model, optimizer, loss_fn, train_dataloader):
             logits = y_pred.permute(0, 2, 1)
             loss = loss_fn(logits, target)
 
-            pred = torch.argmax(y_pred, dim=2)
-            correct = (pred == target).sum().item()
+            preds = torch.argmax(logits, dim=1)
 
-            # batch loss and acc
+            batch_iou = iou(preds, target).item()
             batch_loss = loss.item()
-            batch_acc = correct / target.size(1)
 
             epoch_loss += batch_loss
-            epoch_acc += correct
-            total_samples += target.size(1)
+            epoch_iou += batch_iou
             
             loss.backward()
             optimizer.step()
-            tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1), epoch_acc=100. * (epoch_acc/total_samples))
+            tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1), epoch_iou=100. * (epoch_iou / (batch_idx+1)))
 
     epoch_loss /= len(train_dataloader)
-    epoch_acc /= total_samples
+    epoch_acc /= len(train_dataloader)
             
 
 def train():
