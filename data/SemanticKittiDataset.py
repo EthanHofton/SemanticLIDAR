@@ -1,6 +1,7 @@
 from util.auxiliary.laserscan import SemLaserScan
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
+from torch.nn.utils.rnn import pad_sequence
 from args.args import Args
 from glob import glob
 import torch
@@ -62,15 +63,42 @@ class SemanticKittiDataset(Dataset):
         scan.open_scan(scan_file)
         scan.open_label(label_file)
 
-        mapped_labels = torch.tensor([self.config["learning_map"][label] for label in scan.sem_label], dtype=torch.long)
-
         if self.transform:
             scan = self.transform(scan)
 
-        print(mapped_labels)
-        exit()
+        mapped_labels = torch.tensor([self.config["learning_map"][label] for label in scan.sem_label], dtype=torch.long)
+        points = torch.tensor(scan.points, dtype=torch.float32).transpose(0, 1)
 
-        return torch.tensor(scan.points, dtype=torch.float32), mapped_labels
+        return points, mapped_labels
 
     def __len__(self):
         return self.sample_size
+
+
+# TODO: allow batching via masking
+def semantic_kitti_collate_fn(batch):
+    point_clouds, labels = zip(*batch)
+    
+    # Find the maximum number of points in the batch
+    max_len = max([pc.size(0) for pc in point_clouds])
+    
+    padded_point_clouds = []
+    point_cloud_masks = []  # To keep track of the valid points (non-padded)
+    
+    for pc in point_clouds:
+        padding = torch.zeros((max_len - pc.size(0), pc.size(1)))  # Assuming (N, 3) shape for point clouds (x, y, z)
+        padded_pc = torch.cat([pc, padding], dim=0)  # Pad the point cloud
+        
+        # Create a mask where 1 indicates a valid point, and 0 indicates padding
+        mask = torch.ones(max_len)
+        mask[pc.size(0):] = 0  # Set the mask values to 0 for padded points
+        
+        padded_point_clouds.append(padded_pc)
+        point_cloud_masks.append(mask)
+    
+    # Stack the point clouds and masks
+    point_clouds_batch = torch.stack(padded_point_clouds)
+    masks_batch = torch.stack(point_cloud_masks)
+    labels_batch = torch.tensor(labels)
+
+    return point_clouds_batch, masks_batch, labels_batch
