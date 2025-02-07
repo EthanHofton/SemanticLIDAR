@@ -17,4 +17,7 @@ def add_train_parser(subparsers):
                               type=str,
                               help='Training device to use. CPU or MPS',
                               default='cpu')
+    train_parser.add_argument('--validate',
+                              help='Validate each epoch using a validation set',
+                              action='store_true')
     train_parser.set_defaults(command='train')
