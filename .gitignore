@@ -2,6 +2,7 @@
 *.DS_Store
 .venv/
 **/__pycache__/
+run*
 
 # READ THIS BEFORE YOU REFACTOR ME
 #

@@ -20,4 +20,12 @@ def add_train_parser(subparsers):
     train_parser.add_argument('--validate',
                               help='Validate each epoch using a validation set',
                               action='store_true')
+    train_parser.add_argument('--checkpoint',
+                              help='frequences to checkpoint models per epoch. 0 for none',
+                              default=0,
+                              type=int)
+    train_parser.add_argument('--from_checkpoint',
+                              help='load a model from a checkpoint to resume training',
+                              default=None,
+                              type=str)
     train_parser.set_defaults(command='train')
