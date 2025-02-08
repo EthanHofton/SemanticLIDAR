@@ -25,6 +25,7 @@ class SemanticKittiDataset(Dataset):
         self.config = ds_config
         self.split = split
         self.has_labels = (self.split == 'train' or self.split == 'valid')
+        self.scan = SemLaserScan(self.config['color_map'], project=False)
 
         sequences = [os.path.join(ds_path, 'sequences', f'{int(sequence):02}')
                      for sequence in self.config['split'][split]
@@ -59,21 +60,47 @@ class SemanticKittiDataset(Dataset):
         scan_file = self.scan_files[idx]
         label_file = self.label_files[idx]
 
-        scan = SemLaserScan(self.config['color_map'], project=False)
-        scan.open_scan(scan_file)
-        scan.open_label(label_file)
+        self.scan.open_scan(scan_file)
+        self.scan.open_label(label_file)
 
         if self.transform:
-            scan = self.transform(scan)
+            self.scan = self.transform(self.scan)
 
-        mapped_labels = torch.tensor([self.config["learning_map"][label] for label in scan.sem_label], dtype=torch.long)
-        points = torch.tensor(scan.points, dtype=torch.float32).transpose(0, 1)
+        mapped_labels = torch.tensor([self.config["learning_map"][label] for label in self.scan.sem_label], dtype=torch.long)
+        points = torch.tensor(self.scan.points, dtype=torch.float32).transpose(0, 1)
 
         return points, mapped_labels
 
     def __len__(self):
         return self.sample_size
 
+
+# def semantic_kitti_collate_fn(batch):
+#     """
+#     Custom collate function to pad point clouds and labels, and create masks.
+#     """
+#     points, labels = zip(*batch)
+#     
+#     # Determine max number of points in the batch
+#     max_points = max([pc.size(1) for pc in points])
+#     
+#     padded_points = torch.zeros(len(batch), 3, max_points)  # Shape: (batch_size, 3, max_points)
+#     padded_labels = torch.zeros(len(batch), max_points, dtype=torch.long)  # Shape: (batch_size, max_points)
+#     mask = torch.zeros(len(batch), max_points)  # Shape: (batch_size, max_points)
+#     
+#     for i, (point_cloud, label) in enumerate(zip(points, labels)):
+#         num_points = point_cloud.size(1)
+#         
+#         # Pad the points
+#         padded_points[i, :, :num_points] = point_cloud
+#         
+#         # Pad the labels
+#         padded_labels[i, :num_points] = label
+#         
+#         # Create a mask: 1 for real points, 0 for padding
+#         mask[i, :num_points] = 1
+#     
+#     return padded_points, padded_labels, mask
 
 def semantic_kitti_collate_fn(batch):
     """
@@ -86,7 +113,6 @@ def semantic_kitti_collate_fn(batch):
     
     padded_points = torch.zeros(len(batch), 3, max_points)  # Shape: (batch_size, 3, max_points)
     padded_labels = torch.zeros(len(batch), max_points, dtype=torch.long)  # Shape: (batch_size, max_points)
-    mask = torch.zeros(len(batch), max_points)  # Shape: (batch_size, max_points)
     
     for i, (point_cloud, label) in enumerate(zip(points, labels)):
         num_points = point_cloud.size(1)
@@ -96,8 +122,6 @@ def semantic_kitti_collate_fn(batch):
         
         # Pad the labels
         padded_labels[i, :num_points] = label
-        
-        # Create a mask: 1 for real points, 0 for padding
-        mask[i, :num_points] = 1
     
-    return padded_points, padded_labels, mask
+    return padded_points, padded_labels
+

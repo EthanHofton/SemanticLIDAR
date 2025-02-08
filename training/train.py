@@ -11,18 +11,29 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from torchmetrics import JaccardIndex
+# from memory_profiler import profile
 
+def get_optimizer_memory_size(optimizer):
+    memory_size = 0
+    for group in optimizer.param_groups:
+        for param in group['params']:
+            # Add the size of the parameter tensor in bytes
+            memory_size += param.numel() * param.element_size()
+    return memory_size
 
 
 def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
     model.train()
 
     epoch_loss = 0
-    epoch_iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
-    epoch_iou.reset()
+    epoch_iou = 0
+    num_batches = 0
+
+    mps_cache_reset = 5
+    avg_mem_usage = 0
 
     with tqdm(train_dataloader, unit="batch") as tepoch:
-        for batch_idx, (data, target, _) in enumerate(tepoch):
+        for batch_idx, (data, target) in enumerate(tepoch):
             # check batch size isnt 1 to avoid batch norm layers crashing
             if data.size(0) == 1:
                 continue
@@ -38,14 +49,33 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
 
             preds = torch.argmax(logits, dim=1)
 
-            epoch_iou.update(preds, target)
+            with torch.no_grad():
+                batch_iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
+                batch_iou.update(preds.detach(), target.detach())
+                iou_score = batch_iou.compute().item()
+
             epoch_loss += loss.item()
+            epoch_iou += iou_score
+            num_batches += 1
+            avg_mem_usage += torch.mps.driver_allocated_memory() / 1e9
             
             loss.backward()
             optimizer.step()
-            tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1), epoch_iou=100. * epoch_iou.compute().item())
 
-    epoch_loss /= len(train_dataloader)
+            # memory optimization
+            if Args.args.device == torch.device('mps') and batch_idx % mps_cache_reset == 0:
+                torch.mps.empty_cache()
+            del data, target, y_pred, logits, preds, batch_iou
+
+            # tqdm progress bar
+            tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1),
+                               epoch_iou=100. * (epoch_iou / num_batches),
+                               mem_usage=f'{(torch.mps.driver_allocated_memory()/ 1e9):.2f}GB',
+                               avg_mem_usage=f'{(avg_mem_usage / num_batches):.2f}GB',
+                               op_mem_usage=f'{(get_optimizer_memory_size(optimizer)/1e6):.2f}MB')
+
+    epoch_loss /= num_batches
+    epoch_iou /= num_batches
 
 def train():
     run_config = RunConfig(epochs=5, lr=1e-3)
@@ -54,8 +84,13 @@ def train():
         print(f"Beginning Run {run_config.run_id}")
 
     train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.config, transform=None, split='train')
-    train_dataloader = DataLoader(train_dataset, batch_size=4, num_workers=8, pin_memory=False, collate_fn=semantic_kitti_collate_fn)
-
+    train_dataloader = DataLoader(train_dataset,
+                                  batch_size=4,
+                                  num_workers=4,
+                                  persistent_workers=True,
+                                  pin_memory=False,
+                                  shuffle=True,
+                                  collate_fn=semantic_kitti_collate_fn)
     if Args.args.verbose:
         print("Loaded datasets")
 
@@ -70,10 +105,8 @@ def train():
 
     if Args.args.verbose:
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        optimizer_state_size = sum([param.numel() * param.element_size() for param in optimizer.state.values()])
         print("Loaded Model:")
         print(f"\tTrainable parameters: {trainable_params}")
-        print(f"\tOptimizer memory usage: {optimizer_state_size / 1e6} MB")
 
     for epoch in range(epoch_offset, run_config.epochs+epoch_offset):
         train_epoch(epoch, run_config.epochs, model, optimizer, loss, train_dataloader)
