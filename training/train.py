@@ -5,7 +5,7 @@ from training.run_config import RunConfig
 import torch.nn.functional as F
 from models.eg_pointnet import get_model, get_loss
 from args.args import Args
-from util.checkpoint import save_checkpoint, save_best
+from util.checkpoint import save_checkpoint, save_best, load_checkpoint
 from training.validate import validate
 
 import torch
@@ -117,7 +117,7 @@ def train():
         print(f"\tTrainable parameters: {trainable_params}")
 
     for epoch in range(epoch_offset, run_config.epochs+epoch_offset):
-        train_epoch(epoch, run_config.epochs, model, optimizer, loss, train_dataloader)
+        train_epoch(epoch, run_config.epochs + epoch_offset, model, optimizer, loss, train_dataloader)
 
         if Args.args.validate:
             if Args.args.verbose:
