@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from models.eg_pointnet import get_model, get_loss
 from args.args import Args
 from util.checkpoint import save_checkpoint, save_best
+from training.validate import validate
 
 import torch
 from torch.utils.data import DataLoader
@@ -24,6 +25,7 @@ def get_optimizer_memory_size(optimizer):
 
 def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
     model.train()
+    batch_iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
 
     epoch_loss = 0
     epoch_iou = 0
@@ -36,7 +38,7 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
         for batch_idx, (data, target) in enumerate(tepoch):
             # check batch size isnt 1 to avoid batch norm layers crashing
             if data.size(0) == 1:
-                continue
+                continue # so batch norm dosnt shit the bed
 
             tepoch.set_description(f"Epoch {epoch}/{epochs}")
 
@@ -50,9 +52,7 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
             preds = torch.argmax(logits, dim=1)
 
             with torch.no_grad():
-                batch_iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
-                batch_iou.update(preds.detach(), target.detach())
-                iou_score = batch_iou.compute().item()
+                iou_score = batch_iou(preds.detach(), target.detach()).item()
 
             epoch_loss += loss.item()
             epoch_iou += iou_score
@@ -63,9 +63,7 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
             optimizer.step()
 
             # memory optimization
-            if Args.args.device == torch.device('mps') and batch_idx % mps_cache_reset == 0:
-                torch.mps.empty_cache()
-            del data, target, y_pred, logits, preds, batch_iou
+            del data, target, y_pred, logits, preds
 
             # tqdm progress bar
             tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1),
@@ -85,16 +83,26 @@ def train():
 
     train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.config, transform=None, split='train')
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=4,
+                                  batch_size=2,
                                   num_workers=4,
                                   persistent_workers=True,
                                   pin_memory=False,
                                   shuffle=True,
                                   collate_fn=semantic_kitti_collate_fn)
+    if Args.args.validate:
+        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.config, transform=None, split='valid')
+        valid_dataloader = DataLoader(valid_dataset,
+                                      batch_size=2,
+                                      num_workers=4,
+                                      persistent_workers=True,
+                                      pin_memory=False,
+                                      shuffle=True,
+                                      collate_fn=semantic_kitti_collate_fn)
+
+
     if Args.args.verbose:
         print("Loaded datasets")
 
-    # model = PointNetSegmentation(num_classes=train_dataset.num_classes).to(Args.args.device)
     model = get_model(num_class=train_dataset.num_classes).to(Args.args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=run_config.lr)
     loss = F.nll_loss
@@ -111,5 +119,14 @@ def train():
     for epoch in range(epoch_offset, run_config.epochs+epoch_offset):
         train_epoch(epoch, run_config.epochs, model, optimizer, loss, train_dataloader)
 
+        if Args.args.validate:
+            if Args.args.verbose:
+                print("Epoch complete, validating...")
+            val_loss, val_iou = validate(model, valid_dataloader, loss)
+            if Args.args.verbose:
+                print(f"Validation complete: val_loss: {val_loss} - val_iou: {val_iou}")
+        else:
+            val_loss, val_iou = 0, 0
+
         if Args.args.checkpoint != 0 and epoch % Args.args.checkpoint == 0:
-            save_checkpoint(model, optimizer, epoch, 0, run_config, False)
+            save_checkpoint(model, optimizer, epoch, val_iou, run_config, False)

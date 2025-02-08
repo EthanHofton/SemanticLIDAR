@@ -6,6 +6,7 @@ from args.args import Args
 from glob import glob
 import torch
 import os
+import numpy as np
 
 
 class SemanticKittiDataset(Dataset):
@@ -25,7 +26,7 @@ class SemanticKittiDataset(Dataset):
         self.config = ds_config
         self.split = split
         self.has_labels = (self.split == 'train' or self.split == 'valid')
-        self.scan = SemLaserScan(self.config['color_map'], project=False)
+        # self.scan = SemLaserScan(self.config['color_map'], project=False)
 
         sequences = [os.path.join(ds_path, 'sequences', f'{int(sequence):02}')
                      for sequence in self.config['split'][split]
@@ -42,6 +43,10 @@ class SemanticKittiDataset(Dataset):
             self.label_files = sorted(self.label_files)
 
         self.num_classes = len(self.config['learning_map_inv'])
+
+        # temporarly take a portion of the dataset for development. Un comment to take an 8th of the dataset
+        # self.scan_files = self.scan_files[:len(self.scan_files) // 8]
+        # self.label_files = self.label_files[:len(self.label_files) // 8]
 
         if Args.args.verbose:
             print(f"Found {len(self.scan_files)} scan files")
@@ -60,47 +65,24 @@ class SemanticKittiDataset(Dataset):
         scan_file = self.scan_files[idx]
         label_file = self.label_files[idx]
 
-        self.scan.open_scan(scan_file)
-        self.scan.open_label(label_file)
+        # get points
+        points_scan = np.fromfile(scan_file, dtype=np.float32)
+        points_scan = points_scan.reshape((-1, 4))
+        points = points_scan[:, 0:3] # get xyz
+        points = torch.tensor(points, dtype=torch.float32).transpose(0, 1)
 
-        if self.transform:
-            self.scan = self.transform(self.scan)
+        # get labels
+        labels = np.fromfile(label_file, dtype=np.uint32)
+        labels = labels.reshape((-1))
+        labels = labels & 0xFFFF  # semantic label in lower half
+        labels = torch.tensor([self.config["learning_map"][label] for label in labels], dtype=torch.long)
 
-        mapped_labels = torch.tensor([self.config["learning_map"][label] for label in self.scan.sem_label], dtype=torch.long)
-        points = torch.tensor(self.scan.points, dtype=torch.float32).transpose(0, 1)
+        return points, labels
 
-        return points, mapped_labels
 
     def __len__(self):
         return self.sample_size
 
-
-# def semantic_kitti_collate_fn(batch):
-#     """
-#     Custom collate function to pad point clouds and labels, and create masks.
-#     """
-#     points, labels = zip(*batch)
-#     
-#     # Determine max number of points in the batch
-#     max_points = max([pc.size(1) for pc in points])
-#     
-#     padded_points = torch.zeros(len(batch), 3, max_points)  # Shape: (batch_size, 3, max_points)
-#     padded_labels = torch.zeros(len(batch), max_points, dtype=torch.long)  # Shape: (batch_size, max_points)
-#     mask = torch.zeros(len(batch), max_points)  # Shape: (batch_size, max_points)
-#     
-#     for i, (point_cloud, label) in enumerate(zip(points, labels)):
-#         num_points = point_cloud.size(1)
-#         
-#         # Pad the points
-#         padded_points[i, :, :num_points] = point_cloud
-#         
-#         # Pad the labels
-#         padded_labels[i, :num_points] = label
-#         
-#         # Create a mask: 1 for real points, 0 for padding
-#         mask[i, :num_points] = 1
-#     
-#     return padded_points, padded_labels, mask
 
 def semantic_kitti_collate_fn(batch):
     """
