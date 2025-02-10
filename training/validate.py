@@ -20,7 +20,8 @@ def validate(model, valid_dataloader, loss_fn):
                 tbatch.set_description(f'Batch {batch_idx}/{len(valid_dataloader)}')
 
                 data, target = data.to(Args.args.device), target.to(Args.args.device)
-                y_pred, _ = model(data)
+                y_pred = model(data) # shape (batch_size, N, num_classes)
+                # cross entroy loss needs shape: (batch_size, num_classes, N)
                 logits = y_pred.permute(0, 2, 1)
 
                 preds = torch.argmax(logits, dim=1)
@@ -28,9 +29,14 @@ def validate(model, valid_dataloader, loss_fn):
                 val_iou += batch_iou(preds, target).item()
                 num_batches += 1
 
-                tbatch.set_postfix(val_loss=val_loss/num_batches,
-                   val_iou=100. * (val_iou / num_batches),
-                   mem_usage=f'{(torch.mps.driver_allocated_memory()/ 1e9):.2f}GB')
+                if Args.args.device == torch.device('mps'):
+                    tbatch.set_postfix(val_loss=val_loss/num_batches,
+                       val_iou=100. * (val_iou / num_batches),
+                       mem_usage=f'{(torch.mps.driver_allocated_memory()/ 1e9):.2f}GB')
+                else:
+                    tbatch.set_postfix(val_loss=val_loss/num_batches,
+                       val_iou=100. * (val_iou / num_batches))
+
 
     val_loss /= num_batches
     val_iou /= num_batches

@@ -1,3 +1,5 @@
+import numpy as np
+
 class RandomDownsample:
     def __init__(self, max_points=1024):
         """
