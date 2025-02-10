@@ -11,7 +11,7 @@ import numpy as np
 
 class SemanticKittiDataset(Dataset):
 
-    def __init__(self, ds_path, ds_config, transform=None, split='train'):
+    def __init__(self, ds_path, ds_config, transform=None, split='train', max_points=1024):
         """
             Semantic KITTI dataset
             - use train=True for training
@@ -21,12 +21,12 @@ class SemanticKittiDataset(Dataset):
         if split not in ['test', 'train', 'valid']:
             raise Exception(f'split must be either test, train or valid. Not {split}')
 
+        self.max_points=1024
         self.ds_path = ds_path
         self.transform = transform
         self.config = ds_config
         self.split = split
         self.has_labels = (self.split == 'train' or self.split == 'valid')
-        # self.scan = SemLaserScan(self.config['color_map'], project=False)
 
         sequences = [os.path.join(ds_path, 'sequences', f'{int(sequence):02}')
                      for sequence in self.config['split'][split]

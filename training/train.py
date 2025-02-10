@@ -1,11 +1,14 @@
 from data.SemanticKittiDataset import SemanticKittiDataset, semantic_kitti_collate_fn
 from training.run_config import RunConfig
 import torch.nn.functional as F
-from models.eg_pointnet import get_model, get_loss
+# from models.eg_pointnet import get_model, get_loss
+from models.simplified_pn import get_model
 from args.args import Args
 from util.checkpoint import save_checkpoint, save_best, load_checkpoint
 from training.validate import validate
 import wandb
+
+import torch.autograd.profiler as profiler
 
 import torch
 from torch.utils.data import DataLoader
@@ -131,7 +134,9 @@ def train():
         print(f"\tTrainable parameters: {trainable_params}")
 
     for epoch in range(epoch_offset, run_config.epochs+epoch_offset):
-        epoch_loss, epoch_iou = train_epoch(epoch, run_config.epochs + epoch_offset, model, optimizer, loss, train_dataloader, 10)
+        with profiler.profile() as prof:
+            epoch_loss, epoch_iou = train_epoch(epoch, run_config.epochs + epoch_offset, model, optimizer, loss, train_dataloader, 10)
+        prof.export_chrome_trace("trace.json")
 
         if Args.args.validate:
             if Args.args.verbose:

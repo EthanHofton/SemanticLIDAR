@@ -23,6 +23,8 @@ class Args():
                 cls.args.use_wandb = True
             except Exception as e:
                 raise Exception(f"Error opening WandB config file: {cls.args.config}") from e
+        else:
+            cls.args.use_wandb = False
 
         # visualize config
         if getattr(cls.args, "command", None) == "visualize" or getattr(cls.args, "command", None) == "train":
