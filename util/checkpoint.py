@@ -1,8 +1,10 @@
+from args.args import Args
 import os
 import torch
 import wandb
 
-def save_checkpoint(model, optimizer, epoch, val_iou, run_config, use_wandb):
+def save_checkpoint(model, optimizer, epoch, val_iou):
+    run_config = Args.run_config
     checkpoint_path = f'run-{run_config.run_id}-checkpoints'
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
@@ -15,20 +17,19 @@ def save_checkpoint(model, optimizer, epoch, val_iou, run_config, use_wandb):
     }
 
     filename = f"{run_config.run_id}-epoch-{epoch}.pth"
-    if use_wandb:
-        filename = f"{wandb.run.name}_{filename}"
-
     checkpoint_filename = os.path.join(checkpoint_path, filename)
     torch.save(checkpoint, checkpoint_filename)
     print(f"Checkpoint saved at epoch {epoch}, with validation mIoU: {val_iou} ({checkpoint_filename})")
 
-    if use_wandb:
+    if Args.args.wandb:
         artifact = wandb.Artifact(filename, type='model')
         artifact.add_file(checkpoint_filename)
         wandb.log_artifact(artifact)
 
 
-def save_best(model, optimizer, epoch, metric, run_config, use_wandb):
+def save_best(model, optimizer, epoch, metric):
+    run_config = Args.run_config
+
     checkpoint_path = f'run-{run_config.run_id}-checkpoints'
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
@@ -41,14 +42,11 @@ def save_best(model, optimizer, epoch, metric, run_config, use_wandb):
     }
 
     filename = f"{run_config.run_id}-best-{metric}-epoch-{epoch}.pth"
-    if use_wandb:
-        filename = f"{wandb.run.name}_{filename}"
-
     checkpoint_filename = os.path.join(checkpoint_path, filename)
     torch.save(checkpoint, checkpoint_filename)
     print(f"Best model for {metric} saved ({checkpoint_filename})")
 
-    if use_wandb:
+    if Args.args.wandb:
         artifact = wandb.Artifact(filename, type='model')
         artifact.add_file(checkpoint_filename)
         wandb.log_artifact(artifact)

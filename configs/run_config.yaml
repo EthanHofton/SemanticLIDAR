@@ -1,0 +1,12 @@
+epochs: 10
+lr: 0.003
+
+num_workers: 4
+train_batch_size: 64
+test_batch_size: 4
+valid_batch_size: 4
+
+train_downsample: 1024
+batch_log_rate: 5
+
+project: SemanticLiDAR

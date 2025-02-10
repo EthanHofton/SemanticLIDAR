@@ -30,6 +30,9 @@ def add_train_parser(subparsers):
                               type=str)
     train_parser.add_argument('--wandb',
                               help='Enable wandb logging, provide wandb config file',
+                              action='store_true')
+    train_parser.add_argument('--run_config',
+                              help='run_config yaml file',
                               type=str,
-                              default=None)
+                              default='configs/run_config.yaml')
     train_parser.set_defaults(command='train')

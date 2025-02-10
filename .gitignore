@@ -2,10 +2,10 @@
 *.DS_Store
 .venv/
 **/__pycache__/
-run*
 wandb/
 *.dat
 trace.json
+run-*
 
 # READ THIS BEFORE YOU REFACTOR ME
 #
