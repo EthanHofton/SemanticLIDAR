@@ -118,14 +118,13 @@ def train():
                                   pin_memory=False,
                                   shuffle=True)
     if Args.args.validate:
-        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.config, downsample=False, split='valid')
+        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.config, downsample=True, split='valid')
         valid_dataloader = DataLoader(valid_dataset,
                                       batch_size=run_config.valid_batch_size,
                                       num_workers=run_config.num_workers,
                                       persistent_workers=True,
                                       pin_memory=False,
-                                      shuffle=True,
-                                      collate_fn=semantic_kitti_collate_fn)
+                                      shuffle=True)
 
     if Args.args.verbose:
         print("Loaded datasets")
