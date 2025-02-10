@@ -54,5 +54,7 @@ class get_model(nn.Module):
         
         # Refine the point features
         output = self.refine_mlp(point_features)  # Shape: (batch_size, N, num_classes)
+
+        log_probs = F.log_softmax(output, dim=-1) # return softmax for nll
         
-        return output
+        return log_probs

@@ -72,13 +72,13 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
 
             # tqdm progress bar
             if Args.args.device == torch.device('mps'):
-                tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1),
+                tepoch.set_postfix(epoch_loss=epoch_loss/num_batches,
                                    epoch_iou=100. * (epoch_iou / num_batches),
                                    mem_usage=f'{mem_usage:.2f}GB',
                                    avg_mem_usage=f'{avg_mem_usage / num_batches:.2f}GB',
                                    op_mem_usage=f'{op_mem_usage:.2f}MB')
             else:
-                tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1),
+                tepoch.set_postfix(epoch_loss=epoch_loss/num_batches,
                                    epoch_iou=100. * (epoch_iou / num_batches))
 
 
