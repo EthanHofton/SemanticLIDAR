@@ -1,18 +1,17 @@
 from data.SemanticKittiDataset import SemanticKittiDataset, semantic_kitti_collate_fn
 from training.run_config import RunConfig
-# from models.PointNetLoss import pointnet_segmentation_loss
-# from models.PointNetSegmentation import PointNetSegmentation
 import torch.nn.functional as F
 from models.eg_pointnet import get_model, get_loss
 from args.args import Args
 from util.checkpoint import save_checkpoint, save_best, load_checkpoint
 from training.validate import validate
+import wandb
 
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from torchmetrics import JaccardIndex
-# from memory_profiler import profile
+
 
 def get_optimizer_memory_size(optimizer):
     memory_size = 0
@@ -23,7 +22,7 @@ def get_optimizer_memory_size(optimizer):
     return memory_size
 
 
-def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
+def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader, batch_log_rate):
     model.train()
     batch_iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
 
@@ -65,15 +64,31 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
             # memory optimization
             del data, target, y_pred, logits, preds
 
+            mem_usage = torch.mps.driver_allocated_memory()/ 1e9
+            op_mem_usage = get_optimizer_memory_size(optimizer)/1e6
+
             # tqdm progress bar
             tepoch.set_postfix(epoch_loss=epoch_loss/(batch_idx+1),
                                epoch_iou=100. * (epoch_iou / num_batches),
-                               mem_usage=f'{(torch.mps.driver_allocated_memory()/ 1e9):.2f}GB',
-                               avg_mem_usage=f'{(avg_mem_usage / num_batches):.2f}GB',
-                               op_mem_usage=f'{(get_optimizer_memory_size(optimizer)/1e6):.2f}MB')
+                               mem_usage=f'{mem_usage:.2f}GB',
+                               avg_mem_usage=f'{avg_mem_usage / num_batches:.2f}GB',
+                               op_mem_usage=f'{op_mem_usage:.2f}MB')
+
+            if Args.args.use_wandb and batch_idx % batch_log_rate == 0:
+                wandb.log({
+                    'batch_loss': loss.item(),
+                    'batch_iou': iou_score,
+                    'mem_usage_gb': mem_usage,
+                    'avg_mem_usage_gb': (avg_mem_usage / num_batches),
+                    'optimizer_mem_usage_mb': op_mem_usage,
+                    'batch_idx': batch_idx
+                })
+
 
     epoch_loss /= num_batches
     epoch_iou /= num_batches
+
+    return epoch_loss, epoch_iou
 
 def train():
     run_config = RunConfig(epochs=5, lr=1e-3)
@@ -99,7 +114,6 @@ def train():
                                       shuffle=True,
                                       collate_fn=semantic_kitti_collate_fn)
 
-
     if Args.args.verbose:
         print("Loaded datasets")
 
@@ -117,16 +131,32 @@ def train():
         print(f"\tTrainable parameters: {trainable_params}")
 
     for epoch in range(epoch_offset, run_config.epochs+epoch_offset):
-        train_epoch(epoch, run_config.epochs + epoch_offset, model, optimizer, loss, train_dataloader)
+        epoch_loss, epoch_iou = train_epoch(epoch, run_config.epochs + epoch_offset, model, optimizer, loss, train_dataloader, 10)
 
         if Args.args.validate:
             if Args.args.verbose:
                 print("Epoch complete, validating...")
             val_loss, val_iou = validate(model, valid_dataloader, loss)
+
             if Args.args.verbose:
                 print(f"Validation complete: val_loss: {val_loss} - val_iou: {val_iou}")
+
+            if Args.args.use_wandb:
+                wandb.log({
+                    'epoch_loss': epoch_loss,
+                    'epoch_iou': epoch_iou,
+                    'val_loss': val_loss,
+                    'val_iou': val_iou,
+                    'epoch': epoch
+                })
         else:
             val_loss, val_iou = 0, 0
+            if Args.args.use_wandb:
+                wandb.log({
+                    'epoch_loss': epoch_loss,
+                    'epoch_iou': epoch_iou,
+                    'epoch': epoch
+                })
 
         if Args.args.checkpoint != 0 and epoch % Args.args.checkpoint == 0:
-            save_checkpoint(model, optimizer, epoch, val_iou, run_config, False)
+            save_checkpoint(model, optimizer, epoch, val_iou, run_config, Args.args.use_wandb)

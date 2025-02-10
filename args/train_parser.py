@@ -28,4 +28,8 @@ def add_train_parser(subparsers):
                               help='load a model from a checkpoint to resume training',
                               default=None,
                               type=str)
+    train_parser.add_argument('--wandb',
+                              help='Enable wandb logging, provide wandb config file',
+                              type=str,
+                              default=None)
     train_parser.set_defaults(command='train')

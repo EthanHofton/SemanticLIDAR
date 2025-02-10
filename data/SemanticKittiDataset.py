@@ -45,8 +45,8 @@ class SemanticKittiDataset(Dataset):
         self.num_classes = len(self.config['learning_map_inv'])
 
         # temporarly take a portion of the dataset for development. Un comment to take an 8th of the dataset
-        # self.scan_files = self.scan_files[:len(self.scan_files) // 8]
-        # self.label_files = self.label_files[:len(self.label_files) // 8]
+        self.scan_files = self.scan_files[:len(self.scan_files) // 8]
+        self.label_files = self.label_files[:len(self.label_files) // 8]
 
         if Args.args.verbose:
             print(f"Found {len(self.scan_files)} scan files")
