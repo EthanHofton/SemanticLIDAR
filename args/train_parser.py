@@ -6,7 +6,7 @@ def add_train_parser(subparsers):
                               help='Path to dataset',
                               required=True)
     train_parser.add_argument('-c',
-                              '--config',
+                              '--ds_config',
                               type=str,
                               default='configs/semantic-kitti.yaml',
                               help='Config file for KITTI dataset')

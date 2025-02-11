@@ -33,6 +33,7 @@ class SemanticKittiDataset(Dataset):
         self.split = split
         self.has_labels = (self.split == 'train' or self.split == 'valid')
         self.downsample = downsample
+        self.max_points = Args.run_config.downsample
 
         sequences = [os.path.join(ds_path, 'sequences', f'{int(sequence):02}')
                      for sequence in self.config['split'][split]
@@ -100,7 +101,7 @@ class SemanticKittiDataset(Dataset):
         labels = np.array([self.config["learning_map"][label] for label in labels])
 
         if self.downsample:
-            points, labels = RandomDownsample(max_points=Args.run_config.downsample)(points, labels)
+            points, labels = RandomDownsample(max_points=self.max_points)(points, labels)
 
         points = torch.tensor(points, dtype=torch.float32)
         labels = torch.tensor(labels, dtype=torch.long)

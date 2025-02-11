@@ -109,7 +109,7 @@ def train():
         print(f"Beginning Run {run_config.run_id}")
 
     # add RandomDownsample to the trainset for feasable computation
-    train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.config, downsample=True, split='train')
+    train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, downsample=True, split='train')
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=run_config.train_batch_size,
                                   num_workers=run_config.num_workers,
@@ -117,7 +117,7 @@ def train():
                                   pin_memory=False,
                                   shuffle=True)
     if Args.args.validate:
-        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.config, downsample=True, split='valid')
+        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, downsample=True, split='valid')
         valid_dataloader = DataLoader(valid_dataset,
                                       batch_size=run_config.valid_batch_size,
                                       num_workers=run_config.num_workers,

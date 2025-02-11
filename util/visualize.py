@@ -42,7 +42,7 @@ def visualize():
         raise Exception(f"Failed to open {label_paths}")
 
     # create a scan
-    color_dict = Args.args.config["color_map"]
+    color_dict = Args.args.ds_config["color_map"]
 
     scan = SemLaserScan(color_dict, project=True)
     scan.open_scan(scan_names[0])

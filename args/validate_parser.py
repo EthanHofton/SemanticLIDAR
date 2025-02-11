@@ -6,7 +6,7 @@ def add_validate_parser(subparsers):
                               help='Path to dataset',
                               required=True)
     validate_parser.add_argument('-c',
-                              '--config',
+                              '--ds_config',
                               type=str,
                               default='configs/semantic-kitti.yaml',
                               help='Config file for KITTI dataset')

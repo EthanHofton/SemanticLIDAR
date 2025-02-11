@@ -57,7 +57,7 @@ def run_validate():
         collate_fn = semantic_kitti_collate_fn
 
     valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset,
-                                         ds_config=Args.args.config,
+                                         ds_config=Args.args.ds_config,
                                          downsample=Args.args.downsample,
                                          split='valid')
     valid_dataloader = DataLoader(valid_dataset,

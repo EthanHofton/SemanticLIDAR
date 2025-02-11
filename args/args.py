@@ -33,11 +33,11 @@ class Args():
         if getattr(cls.args, "command", None) == "visualize" or getattr(cls.args, "command", None) == "train" or getattr(cls.args, "command", None) == "validate":
             # open yaml config file
             if getattr(cls.args, "verbose", False):
-                print(f"Opening config file {cls.args.config}")
+                print(f"Opening dataset config file {cls.args.ds_config}")
 
             try:
-                with open(cls.args.config, 'r') as file:
+                with open(cls.args.ds_config, 'r') as file:
                     CTX = yaml.safe_load(file)
-                cls.args.config = CTX
+                cls.args.ds_config = CTX
             except Exception as e:
-                raise Exception(f"Error opening config file: {cls.args.config}") from e
+                raise Exception(f"Error opening config file: {cls.args.ds_config}") from eargs
