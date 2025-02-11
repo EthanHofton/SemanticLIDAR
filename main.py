@@ -5,6 +5,7 @@ from util.visualize import visualize
 from util.make_dataset import make_dataset
 
 from training.train import train
+from training.validate import run_validate
 
 if __name__ == "__main__":
     args, print_help = parse_args()
@@ -16,6 +17,8 @@ if __name__ == "__main__":
         train()
     elif Args.args.command == 'make_dataset':
         make_dataset()
+    elif Args.args.command == 'validate':
+        run_validate()
     else:
         print_help()
 

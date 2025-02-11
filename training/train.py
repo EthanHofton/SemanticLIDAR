@@ -1,7 +1,6 @@
 from data.SemanticKittiDataset import SemanticKittiDataset, semantic_kitti_collate_fn
 
 from args.args import Args
-from transforms.random_downsample import RandomDownsample
 from util.run_config import RunConfig
 from util.checkpoint import save_checkpoint, save_best, load_checkpoint
 from models.pn_linear import get_model

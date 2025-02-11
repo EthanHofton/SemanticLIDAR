@@ -1,0 +1,4 @@
+num_workers: 2 
+batch_size: 4
+downsample: 1024
+project: SemanticLiDAR

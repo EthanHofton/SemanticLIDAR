@@ -100,7 +100,7 @@ class SemanticKittiDataset(Dataset):
         labels = np.array([self.config["learning_map"][label] for label in labels])
 
         if self.downsample:
-            points, labels = RandomDownsample(max_points=1024)(points, labels)
+            points, labels = RandomDownsample(max_points=Args.run_config.downsample)(points, labels)
 
         points = torch.tensor(points, dtype=torch.float32)
         labels = torch.tensor(labels, dtype=torch.long)

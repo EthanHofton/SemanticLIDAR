@@ -30,7 +30,7 @@ class Args():
                 raise Exception(f"Error opening run config file: {cls.args.run_config}")
 
         # visualize config
-        if getattr(cls.args, "command", None) == "visualize" or getattr(cls.args, "command", None) == "train":
+        if getattr(cls.args, "command", None) == "visualize" or getattr(cls.args, "command", None) == "train" or getattr(cls.args, "command", None) == "validate":
             # open yaml config file
             if getattr(cls.args, "verbose", False):
                 print(f"Opening config file {cls.args.config}")
