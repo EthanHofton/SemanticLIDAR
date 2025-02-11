@@ -1,13 +1,13 @@
-from util.auxiliary.laserscan import LaserScan, SemLaserScan
-import open3d as o3d
+from util.auxiliary.laserscan import SemLaserScan
 import os
-import yaml
 from args.args import Args
 
+
 def visualize():
+    import open3d as o3d
     # fix sequence name
     Args.args.sequence = '{0:02d}'.format(int(Args.args.sequence))
-    scan_paths = os.path.join(Args.args.dataset, "sequences", 
+    scan_paths = os.path.join(Args.args.dataset, "sequences",
                               Args.args.sequence, "velodyne")
     # check scan path is path
     if os.path.isdir(scan_paths):
@@ -54,7 +54,7 @@ def visualize():
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
-    
+
     # Use semantic colours for the point cloud
     pcd.colors = o3d.utility.Vector3dVector(sem_colors)
 
