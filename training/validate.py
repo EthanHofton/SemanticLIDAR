@@ -68,7 +68,7 @@ def validate():
                                   num_workers=run_config.num_workers,
                                   persistent_workers=True,
                                   pin_memory=False,
-                                  shuffle=False,
+                                  shuffle=True,
                                   collate_fn=collate_fn)
     
     if Args.args.verbose:
@@ -83,13 +83,14 @@ def validate():
     model.eval()
     num_classes = 20
 
-    per_class_iou = JaccardIndex(task="multiclass", num_classes=num_classes, average='none').to(Args.args.device)
+    mIoU = JaccardIndex(task="multiclass", num_classes=num_classes).to(Args.args.device)
+    if Args.args.per_class:
+        IoU = JaccardIndex(task="multiclass", num_classes=num_classes, average='none').to(Args.args.device)
     if Args.args.confusion_matrix:
         confusion_matrix = ConfusionMatrix(task="multiclass", num_classes=num_classes).to(Args.args.device)
 
     val_loss = 0
     num_batches = 0
-    iou_per_class_sum = torch.zeros(num_classes, device=Args.args.device)
     
     with torch.no_grad():
         with tqdm(valid_dataloader, unit='batch') as tbatch:
@@ -104,8 +105,9 @@ def validate():
 
                 preds = torch.argmax(logits, dim=1) # shape (batch_size, N)
                 val_loss += loss_fn(logits, target).item()
-                iou_per_class = per_class_iou(preds, target)
-                iou_per_class_sum += iou_per_class
+                if Args.args.per_class:
+                    IoU.update(preds, target)
+                mIoU.update(preds, target)
                 num_batches += 1
 
                 if Args.args.confusion_matrix:
@@ -113,19 +115,19 @@ def validate():
 
                 if Args.args.device == torch.device('mps'):
                     tbatch.set_postfix(val_loss=val_loss/num_batches,
-                                       val_iou=(iou_per_class_sum / num_batches).mean().item(),
+                                       val_mIoU=mIoU.compute().item(),
                                        mem_usage=f'{(torch.mps.driver_allocated_memory()/ 1e9):.2f}GB')
                 else:
                     tbatch.set_postfix(val_loss=val_loss/num_batches,
-                                       val_iou=(iou_per_class_sum / num_batches).mean().item())
+                                       val_mIoU=mIoU.compute().item())
 
     val_loss /= num_batches
-    per_class_miou = iou_per_class_sum / num_batches
-
-    mean_iou = per_class_miou.mean().item()
+    val_mIoU = mIoU.compute().item()
 
     if Args.args.confusion_matrix:
-        conf_matrix = confusion_matrix.compute().cpu().numpy()
+        conf_matrix = confusion_matrix.compute()
+        conf_matrix = conf_matrix.float() / (conf_matrix.sum(dim=1, keepdim=True) + 1e-5) * 100
+        conf_matrix = conf_matrix.cpu().numpy()
 
     if Args.args.save:
         # save_results(conf_matrix, per_class_miou, mean_iou, output_dir)
@@ -139,7 +141,7 @@ def validate():
         # View the per-class IoU as a bar chart
         if Args.args.per_class:
             plt.figure(figsize=(10, 6))
-            plt.bar(class_labels, per_class_miou.cpu().numpy())
+            plt.bar(class_labels, IoU.compute().cpu().numpy())
             plt.title("Per-class IoU")
             plt.xlabel("Class Index")
             plt.ylabel("IoU")
@@ -148,7 +150,7 @@ def validate():
         # View the confusion matrix as a heatmap
         if Args.args.confusion_matrix:
             plt.figure(figsize=(10, 8))
-            sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=class_labels, yticklabels=class_labels)
+            sns.heatmap(conf_matrix, annot=True, fmt='.2f', cmap='Blues', xticklabels=class_labels, yticklabels=class_labels)
             plt.title("Confusion Matrix")
             plt.xlabel("Predicted")
             plt.ylabel("True")
@@ -157,9 +159,9 @@ def validate():
     # -- Display Results --
     print('Validation Results:')
     print(f'\tValidation Loss: {val_loss}')
-    print(f'\tValidation mIoU: {mean_iou}')
+    print(f'\tValidation mIoU: {val_mIoU}')
     if Args.args.per_class:
-        print(f'\tPer-class IoU: {per_class_miou}')
+        print(f'\tPer-class IoU: {IoU.compute().cpu().numpy()}')
     if Args.args.confusion_matrix:
         print(f'\tConfusion Matrix: {conf_matrix}')
 
