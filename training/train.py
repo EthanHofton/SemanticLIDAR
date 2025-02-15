@@ -4,7 +4,7 @@ from args.args import Args
 from util.run_config import RunConfig
 from util.checkpoint import save_checkpoint, save_best, load_checkpoint
 from models.pn_linear import get_model
-from training.validate import validate
+from training.validate import train_validate
 
 import torch
 from torch.utils.data import DataLoader
@@ -147,7 +147,7 @@ def train():
         if Args.args.validate:
             if Args.args.verbose:
                 print("Epoch complete, validating...")
-            val_loss, val_iou = validate(model, valid_dataloader, loss)
+            val_loss, val_iou = train_validate(model, valid_dataloader, loss)
 
             if Args.args.verbose:
                 print(f"Validation complete: val_loss: {val_loss} - val_iou: {val_iou}")

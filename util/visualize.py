@@ -1,10 +1,9 @@
 from util.auxiliary.laserscan import SemLaserScan
 import os
 from args.args import Args
-
+import open3d as o3d
 
 def visualize():
-    import open3d as o3d
     # fix sequence name
     Args.args.sequence = '{0:02d}'.format(int(Args.args.sequence))
     scan_paths = os.path.join(Args.args.dataset, "sequences",

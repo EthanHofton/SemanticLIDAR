@@ -23,7 +23,7 @@ def add_visualize_parser(subparsers):
                                   default='00',
                                   required=False)
     visualize_parser.add_argument('-c',
-                                  '--config',
+                                  '--ds_config',
                                   type=str,
                                   help='Label config file',
                                   default='configs/semantic-kitti.yaml',

@@ -6,10 +6,12 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from tqdm import tqdm
-from torchmetrics import JaccardIndex
+from torchmetrics import JaccardIndex, ConfusionMatrix
 from args.args import Args
+from matplotlib import pyplot as plt
+import seaborn as sns
 
-def validate(model, valid_dataloader, loss_fn):
+def train_validate(model, valid_dataloader, loss_fn):
     model.eval()
     batch_iou = JaccardIndex(task="multiclass", num_classes=20).to(Args.args.device)
 
@@ -49,7 +51,8 @@ def validate(model, valid_dataloader, loss_fn):
 
     return val_loss, val_iou
 
-def run_validate():
+
+def validate():
     run_config = Args.run_config
 
     collate_fn = None
@@ -65,20 +68,98 @@ def run_validate():
                                   num_workers=run_config.num_workers,
                                   persistent_workers=True,
                                   pin_memory=False,
-                                  shuffle=True,
+                                  shuffle=False,
                                   collate_fn=collate_fn)
     
     if Args.args.verbose:
         print('Loaded validate dataset')
 
-
     model = get_model(num_classes=valid_dataset.num_classes).to(Args.args.device)
-    loss = F.nll_loss
+    loss_fn = F.nll_loss
 
     load_model(model, Args.args.model)
 
-    val_loss, val_iou = validate(model, valid_dataloader, loss)
+    ## -- Model validation begins here --
+    model.eval()
+    num_classes = 20
 
-    print("Validation Results:")
-    print(f"\tValidation Loss: {val_loss}")
-    print(f"\tValidation mIoU: {val_iou}")
+    per_class_iou = JaccardIndex(task="multiclass", num_classes=num_classes, average='none').to(Args.args.device)
+    if Args.args.confusion_matrix:
+        confusion_matrix = ConfusionMatrix(task="multiclass", num_classes=num_classes).to(Args.args.device)
+
+    val_loss = 0
+    num_batches = 0
+    iou_per_class_sum = torch.zeros(num_classes, device=Args.args.device)
+    
+    with torch.no_grad():
+        with tqdm(valid_dataloader, unit='batch') as tbatch:
+            for batch_idx, (data, target) in enumerate(tbatch):
+                if data.size(0) == 1:
+                    continue # so batch norm doesn't break
+
+                tbatch.set_description(f'Batch {batch_idx}/{len(valid_dataloader)}')
+                data, target = data.to(Args.args.device), target.to(Args.args.device)
+                y_pred = model(data) # shape (batch_size, N, num_classes)
+                logits = y_pred.permute(0, 2, 1) # shape (batch_size, num_classes, N)
+
+                preds = torch.argmax(logits, dim=1) # shape (batch_size, N)
+                val_loss += loss_fn(logits, target).item()
+                iou_per_class = per_class_iou(preds, target)
+                iou_per_class_sum += iou_per_class
+                num_batches += 1
+
+                if Args.args.confusion_matrix:
+                    confusion_matrix.update(preds.flatten(), target.flatten())
+
+                if Args.args.device == torch.device('mps'):
+                    tbatch.set_postfix(val_loss=val_loss/num_batches,
+                                       val_iou=(iou_per_class_sum / num_batches).mean().item(),
+                                       mem_usage=f'{(torch.mps.driver_allocated_memory()/ 1e9):.2f}GB')
+                else:
+                    tbatch.set_postfix(val_loss=val_loss/num_batches,
+                                       val_iou=(iou_per_class_sum / num_batches).mean().item())
+
+    val_loss /= num_batches
+    per_class_miou = iou_per_class_sum / num_batches
+
+    mean_iou = per_class_miou.mean().item()
+
+    if Args.args.confusion_matrix:
+        conf_matrix = confusion_matrix.compute().cpu().numpy()
+
+    if Args.args.save:
+        # save_results(conf_matrix, per_class_miou, mean_iou, output_dir)
+        pass
+
+    if Args.args.view:
+        labels = Args.args.ds_config['labels']
+        labels_map = Args.args.ds_config['learning_map_inv']
+
+        class_labels = [labels[labels_map[index]] for index in range(num_classes)]
+        # View the per-class IoU as a bar chart
+        if Args.args.per_class:
+            plt.figure(figsize=(10, 6))
+            plt.bar(class_labels, per_class_miou.cpu().numpy())
+            plt.title("Per-class IoU")
+            plt.xlabel("Class Index")
+            plt.ylabel("IoU")
+            plt.show()
+
+        # View the confusion matrix as a heatmap
+        if Args.args.confusion_matrix:
+            plt.figure(figsize=(10, 8))
+            sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=class_labels, yticklabels=class_labels)
+            plt.title("Confusion Matrix")
+            plt.xlabel("Predicted")
+            plt.ylabel("True")
+            plt.show()
+
+    # -- Display Results --
+    print('Validation Results:')
+    print(f'\tValidation Loss: {val_loss}')
+    print(f'\tValidation mIoU: {mean_iou}')
+    if Args.args.per_class:
+        print(f'\tPer-class IoU: {per_class_miou}')
+    if Args.args.confusion_matrix:
+        print(f'\tConfusion Matrix: {conf_matrix}')
+
