@@ -1,11 +1,12 @@
 epochs: 10
 lr: 0.001
-num_workers: 4 
-train_batch_size: 64
+num_workers: 2
+mini_batch_size: 32
+train_batch_size: 32
 test_batch_size: 4
-valid_batch_size: 64
+valid_batch_size: 32
 
-downsample: 1024
+downsample_max_points: 1024
 batch_log_rate: 5
 
 project: SemanticLiDAR

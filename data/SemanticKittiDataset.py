@@ -102,7 +102,7 @@ class SemanticKittiDataset(Dataset):
         labels = torch.tensor(labels, dtype=torch.long)
 
         if self.transform:
-            points, labels = self.transform(points)
+            points, labels = self.transform(points, labels)
 
         return points, labels
 

@@ -110,8 +110,8 @@ def train():
     if Args.args.verbose:
         print(f"Beginning Run {run_config.run_id}")
 
-    train_transform = Compose([RandomDownsample(run_config.max_points)])
-    train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, tranfrom=train_transform, split='train')
+    train_transform = Compose([RandomDownsample(run_config.downsample_max_points)])
+    train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, transform=train_transform, split='train')
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=run_config.train_batch_size,
                                   num_workers=run_config.num_workers,
@@ -119,8 +119,8 @@ def train():
                                   pin_memory=False,
                                   shuffle=True)
     if Args.args.validate:
-        valid_transform = Compose([RandomDownsample(run_config.max_points)])
-        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, tranfrom=valid_tranfrom, split='valid')
+        valid_transform = Compose([RandomDownsample(run_config.downsample_max_points)])
+        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, transform=valid_tranfrom, split='valid')
         valid_dataloader = DataLoader(valid_dataset,
                                       batch_size=run_config.valid_batch_size,
                                       num_workers=run_config.num_workers,
