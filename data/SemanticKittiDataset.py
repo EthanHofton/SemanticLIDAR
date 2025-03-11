@@ -12,7 +12,7 @@ from transforms.random_downsample import RandomDownsample
 
 class SemanticKittiDataset(Dataset):
 
-    def __init__(self, ds_path, ds_config, transform=None, split='train', downsample=False):
+    def __init__(self, ds_path, ds_config, transform=None, split='train'):
         """
             Semantic KITTI dataset.
 
@@ -32,8 +32,6 @@ class SemanticKittiDataset(Dataset):
         self.config = ds_config
         self.split = split
         self.has_labels = (self.split == 'train' or self.split == 'valid')
-        self.downsample = downsample
-        self.max_points = Args.run_config.downsample
 
         sequences = [os.path.join(ds_path, 'sequences', f'{int(sequence):02}')
                      for sequence in self.config['split'][split]
@@ -100,14 +98,11 @@ class SemanticKittiDataset(Dataset):
         labels = labels & 0xFFFF  # semantic label in lower half
         labels = np.array([self.config["learning_map"][label] for label in labels])
 
-        if self.downsample:
-            points, labels = RandomDownsample(max_points=self.max_points)(points, labels)
-
         points = torch.tensor(points, dtype=torch.float32)
         labels = torch.tensor(labels, dtype=torch.long)
 
         if self.transform:
-            points = self.transform(points)
+            points, labels = self.transform(points)
 
         return points, labels
 
