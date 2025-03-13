@@ -140,6 +140,8 @@ def train():
         print("Loaded datasets")
 
     model = get_model(num_classes=train_dataset.num_classes).to(Args.args.device)
+    if torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=run_config.lr)
     loss = F.nll_loss
 
