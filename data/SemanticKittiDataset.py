@@ -7,7 +7,7 @@ from glob import glob
 import torch
 import os
 import numpy as np
-from transforms.random_downsample import RandomDownsample
+import open3d as o3d
 
 
 class SemanticKittiDataset(Dataset):
@@ -97,9 +97,6 @@ class SemanticKittiDataset(Dataset):
         labels = labels.reshape((-1))
         labels = labels & 0xFFFF  # semantic label in lower half
         labels = np.array([self.config["learning_map"][label] for label in labels])
-
-        points = torch.tensor(points, dtype=torch.float32)
-        labels = torch.tensor(labels, dtype=torch.long)
 
         if self.transform:
             points, labels = self.transform(points, labels)

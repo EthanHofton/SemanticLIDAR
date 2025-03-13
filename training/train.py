@@ -1,6 +1,5 @@
 from data.SemanticKittiDataset import SemanticKittiDataset, semantic_kitti_collate_fn
-from transforms.compose import Compose
-from transforms.random_downsample import RandomDownsample
+import transforms.transforms as T
 
 from args.args import Args
 from util.run_config import RunConfig
@@ -105,22 +104,30 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
 
     return epoch_loss, epoch_iou
 
+def get_transforms(train):
+    transforms = []
+
+    transforms.append(T.BatchedDownsample())
+    transforms.append(T.NpToTensor())
+
+    return T.Compose(transforms)
+
 def train():
     run_config = Args.run_config
     if Args.args.verbose:
         print(f"Beginning Run {run_config.run_id}")
 
-    train_transform = Compose([RandomDownsample(run_config.downsample_max_points)])
-    train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, transform=train_transform, split='train')
+    train_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, transform=get_transforms(True), split='train')
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=run_config.train_batch_size,
                                   num_workers=run_config.num_workers,
                                   persistent_workers=True,
                                   pin_memory=False,
-                                  shuffle=True)
+                                  shuffle=True,
+                                  collate_fn=T.bds_collate_fn)
     if Args.args.validate:
         valid_transform = Compose([RandomDownsample(run_config.downsample_max_points)])
-        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, transform=valid_tranfrom, split='valid')
+        valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset, ds_config=Args.args.ds_config, transform=get_transforms(False), split='valid')
         valid_dataloader = DataLoader(valid_dataset,
                                       batch_size=run_config.valid_batch_size,
                                       num_workers=run_config.num_workers,
