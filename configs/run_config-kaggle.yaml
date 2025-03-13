@@ -1,10 +1,10 @@
 epochs: 10
 lr: 0.001
-num_workers: 2
+num_workers: 4
 mini_batch_size: 32
-train_batch_size: 32
+train_batch_size: 16
 test_batch_size: 4
-valid_batch_size: 32
+valid_batch_size: 16
 
 downsample_max_points: 1024
 batch_log_rate: 5
