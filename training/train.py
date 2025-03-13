@@ -122,7 +122,7 @@ def train():
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=run_config.train_batch_size,
                                   num_workers=run_config.num_workers,
-                                  persistent_workers=True,
+                                  persistent_workers=False,
                                   pin_memory=False,
                                   shuffle=True,
                                   collate_fn=T.bds_collate_fn)
@@ -132,7 +132,7 @@ def train():
         valid_dataloader = DataLoader(valid_dataset,
                                       batch_size=run_config.valid_batch_size,
                                       num_workers=run_config.num_workers,
-                                      persistent_workers=True,
+                                      persistent_workers=False,
                                       pin_memory=False,
                                       shuffle=True)
 
