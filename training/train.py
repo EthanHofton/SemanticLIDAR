@@ -48,7 +48,6 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
 
             y_pred = model(data)
             logits = y_pred.permute(0, 2, 1)
-            logits = logits.to(torch.long)
             loss = loss_fn(logits, target)
 
             preds = torch.argmax(logits, dim=1)
