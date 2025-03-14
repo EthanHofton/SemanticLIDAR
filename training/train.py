@@ -121,8 +121,8 @@ def train():
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=run_config.train_batch_size,
                                   num_workers=run_config.num_workers,
-                                  persistent_workers=False,
-                                  pin_memory=False,
+                                  persistent_workers=True,
+                                  pin_memory=True,
                                   shuffle=True,
                                   collate_fn=T.bds_collate_fn)
     if Args.args.validate:
