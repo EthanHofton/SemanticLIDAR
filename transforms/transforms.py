@@ -49,21 +49,11 @@ def bds_collate_fn(batch):
     -> stacks mini_batches across batches
     
     """
-    points, labels = zip(*batch)
-    points = torch.stack(points)
-    labels = torch.stack(labels)
-    point_batches = torch.zeros((points.shape[0] * points.shape[1], points.shape[2], points.shape[3]), dtype=torch.float32)
-    label_batches = torch.zeros((labels.shape[0] * labels.shape[1], labels.shape[2],), dtype=torch.long)
-    for i in range(points.shape[0]):
-        for j in range(points.shape[1]):
-            point_batches[i * j] = points[i][j]
+    points, labels = zip(*batch)  # Unpack batch
+    points = torch.cat(points, dim=0)  # (batch_size * mini_batch_size, max_points, 3)
+    labels = torch.cat(labels, dim=0)  # (batch_size * mini_batch_size, max_points)
 
-    for i in range(labels.shape[0]):
-        for j in range(labels.shape[1]):
-            label_batches[i * j] = labels[i][j]
-
-    return point_batches, label_batches
-
+    return points, labels
 
 class StratifiedDownsample:
     def __init__(self, max_points=1024):
