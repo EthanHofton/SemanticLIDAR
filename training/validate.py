@@ -1,4 +1,5 @@
 from data.SemanticKittiDataset import SemanticKittiDataset, semantic_kitti_collate_fn
+import transforms.transforms as T
 from util.checkpoint import load_model
 from models.pn_linear import get_model
 
@@ -51,6 +52,13 @@ def train_validate(model, valid_dataloader, loss_fn):
 
     return val_loss, val_iou
 
+def get_transforms():
+    transforms = []
+
+    transforms.append(T.BatchedDownsample())
+    transforms.append(T.NpToTensor())
+
+    return T.Compose(transforms)
 
 def validate():
     run_config = Args.run_config
@@ -58,10 +66,12 @@ def validate():
     collate_fn = None
     if not (Args.args.downsample):
         collate_fn = semantic_kitti_collate_fn
+    else:
+        collate_fn = T.bds_collate_fn
 
     valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset,
                                          ds_config=Args.args.ds_config,
-                                         downsample=Args.args.downsample,
+                                         transform=get_transforms(),
                                          split='valid')
     valid_dataloader = DataLoader(valid_dataset,
                                   batch_size=run_config.batch_size,
