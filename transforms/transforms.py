@@ -49,11 +49,15 @@ def bds_collate_fn(batch):
     -> stacks mini_batches across batches
     
     """
-    points, labels = zip(*batch)  # Unpack batch
-    points = torch.cat(points, dim=0)  # (batch_size * mini_batch_size, max_points, 3)
-    labels = torch.cat(labels, dim=0)  # (batch_size * mini_batch_size, max_points)
+    points_list, labels_list = zip(*batch)  # Unpack batch
+    points = torch.cat(points_list, dim=0)  # (batch_size * mini_batch_size, max_points, 3)
+    labels = torch.cat(labels_list, dim=0)  # (batch_size * mini_batch_size, max_points)
 
-    return points, labels
+    # Create the batch index tensor for PyG
+    batch_size = len(points_list)
+    batch_ten = torch.arange(batch_size).repeat_interleave(points_list[0].shape[0])  # Shape: (num_points_total,)
+
+    return points, labels, batch_ten
 
 class StratifiedDownsample:
     def __init__(self, max_points=1024):

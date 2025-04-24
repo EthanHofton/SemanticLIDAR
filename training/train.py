@@ -4,13 +4,13 @@ import transforms.transforms as T
 from args.args import Args
 from util.run_config import RunConfig
 from util.checkpoint import save_checkpoint, save_best, load_checkpoint
-from models.pn_linear import get_model
-# from models.pn_attention import get_model
+# from models.pn_linear import get_model
+from models.pn_attention import get_model
 from training.validate import train_validate
 
 import torch
+# from torch_geometric.loader import DataLoader
 from torch.utils.data import DataLoader
-# from torch_geometric.data import DataLoader
 import torch.nn.functional as F
 import torch.autograd.profiler as profiler
 from torchmetrics import JaccardIndex
@@ -36,21 +36,19 @@ def train_epoch(epoch, epochs, model, optimizer, loss_fn, train_dataloader):
     epoch_iou = 0
     num_batches = 0
     avg_mem_usage = 0
+    num_classes = 20
 
     with tqdm(train_dataloader, unit="batch") as tepoch:
-        for batch_idx, (data, target) in enumerate(tepoch):
-            # check batch size isnt 1 to avoid batch norm layers crashing
-            if data.size(0) == 1:
-                continue # so batch norm dosnt shit the bed
-
+        for batch_idx, (data, target, batch) in enumerate(tepoch):
             tepoch.set_description(f"Epoch {epoch}/{epochs}")
 
-            data, target = data.to(Args.args.device), target.to(Args.args.device)
+            data, target, batch = data.to(Args.args.device), target.to(Args.args.device), batch.to(Args.args.device)
             optimizer.zero_grad()
 
-            y_pred = model(data)
+            y_pred = model(data, batch)
             logits = y_pred.permute(0, 2, 1)
-            loss = loss_fn(logits, target)
+            loss = loss_fn(y_pred.view(-1, num_classes), target.view(-1))
+            # loss = loss_fn(logits, target)
 
             preds = torch.argmax(logits, dim=1)
 

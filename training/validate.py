@@ -63,12 +63,12 @@ def get_transforms():
 def validate():
     run_config = Args.run_config
 
-    collate_fn = None
-    if not (Args.args.downsample):
-        collate_fn = semantic_kitti_collate_fn
-    else:
-        collate_fn = T.bds_collate_fn
-
+    # collate_fn = None
+    # if not (Args.args.downsample):
+    #     collate_fn = semantic_kitti_collate_fn
+    # else:
+    #     collate_fn = T.bds_collate_fn
+    collate_fn = T.bds_collate_fn
     valid_dataset = SemanticKittiDataset(ds_path=Args.args.dataset,
                                          ds_config=Args.args.ds_config,
                                          transform=get_transforms(),
@@ -104,10 +104,7 @@ def validate():
     
     with torch.no_grad():
         with tqdm(valid_dataloader, unit='batch') as tbatch:
-            for batch_idx, (data, target) in enumerate(tbatch):
-                if data.size(0) == 1:
-                    continue # so batch norm doesn't break
-
+            for batch_idx, (data, target, _) in enumerate(tbatch):
                 tbatch.set_description(f'Batch {batch_idx}/{len(valid_dataloader)}')
                 data, target = data.to(Args.args.device), target.to(Args.args.device)
                 y_pred = model(data) # shape (batch_size, N, num_classes)
@@ -125,11 +122,11 @@ def validate():
 
                 if Args.args.device == torch.device('mps'):
                     tbatch.set_postfix(val_loss=val_loss/num_batches,
-                                       val_mIoU=mIoU.compute().item(),
+                                       val_mIoU=mIoU.compute().item() * 100,
                                        mem_usage=f'{(torch.mps.driver_allocated_memory()/ 1e9):.2f}GB')
                 else:
                     tbatch.set_postfix(val_loss=val_loss/num_batches,
-                                       val_mIoU=mIoU.compute().item())
+                                       val_mIoU=mIoU.compute().item() * 100)
 
     val_loss /= num_batches
     val_mIoU = mIoU.compute().item()
