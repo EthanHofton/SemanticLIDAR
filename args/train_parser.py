@@ -8,7 +8,7 @@ def add_train_parser(subparsers):
     train_parser.add_argument('-c',
                               '--ds_config',
                               type=str,
-                              default='configs/semantic-kitti.yaml',
+                              default='configs/semantic-kitti-7-class.yaml',
                               help='Config file for KITTI dataset')
     train_parser.add_argument('--verbose',
                               action='store_true',
@@ -17,13 +17,6 @@ def add_train_parser(subparsers):
                               type=str,
                               help='Training device to use. CPU or MPS',
                               default='cpu')
-    train_parser.add_argument('--validate',
-                              help='Validate each epoch using a validation set',
-                              action='store_true')
-    train_parser.add_argument('--checkpoint',
-                              help='frequences to checkpoint models per epoch. 0 for none',
-                              default=0,
-                              type=int)
     train_parser.add_argument('--from_checkpoint',
                               help='load a model from a checkpoint to resume training',
                               default=None,

@@ -12,7 +12,7 @@ import open3d as o3d
 
 class SemanticKittiDataset(Dataset):
 
-    def __init__(self, ds_path, ds_config, transform=None, split='train'):
+    def __init__(self, ds_path, ds_config, transforms=None, split='train'):
         """
             Semantic KITTI dataset.
 
@@ -28,7 +28,7 @@ class SemanticKittiDataset(Dataset):
             raise Exception(f'split must be either test, train or valid. Not {split}')
 
         self.ds_path = ds_path
-        self.transform = transform
+        self.transform = transforms
         self.config = ds_config
         self.split = split
         self.has_labels = (self.split == 'train' or self.split == 'valid')
@@ -138,4 +138,3 @@ def semantic_kitti_collate_fn(batch):
         padded_labels[i, :num_points] = label
     
     return padded_points, padded_labels
-

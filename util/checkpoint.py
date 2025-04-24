@@ -64,9 +64,9 @@ def load_checkpoint(model, optimizer, checkpoint_path):
         print("No checkpoint found. Starting from scratch.")
         return 0, 0
 
-def load_model(model, checkpoint_path):
+def load_model(model, checkpoint_path, device='cpu'):
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, weights_only=True, map_location=torch.device('cpu'))
+        checkpoint = torch.load(checkpoint_path, weights_only=True, map_location=torch.device(device))
         model.load_state_dict(checkpoint['model_state_dict'])
         print(f"Model loaded: {checkpoint_path}")
     else:

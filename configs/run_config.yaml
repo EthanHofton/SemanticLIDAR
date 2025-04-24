@@ -4,7 +4,7 @@ num_workers: 2
 mini_batch_size: 32
 train_batch_size: 8
 test_batch_size: 4
-valid_batch_size: 32
+valid_batch_size: 4
 
 downsample_max_points: 1024
 batch_log_rate: 5

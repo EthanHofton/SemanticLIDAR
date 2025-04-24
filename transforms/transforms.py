@@ -24,17 +24,18 @@ class BatchedDownsample:
         self.batches = batches
 
     def __call__(self, points, labels):
+        num_points = points.shape[0]
         point_batches = np.zeros((self.batches, self.max_points, 3))
-        label_batches = np.zeros((self.batches, self.max_points,))
+        label_batches = np.zeros((self.batches, self.max_points))
+
         for i in range(self.batches):
-            if points.shape[0] > self.max_points:
-                idxs = np.random.choice(points.shape[0], self.max_points, replace=False)
+            if num_points > self.max_points:
+                idxs = np.random.choice(num_points, self.max_points, replace=False)
                 point_batches[i] = points[idxs]
                 label_batches[i] = labels[idxs]
-            elif points.shape[0] < self.max_points:
-                padding = np.zeros((self.max_points - points.shape[0], 3))  # Padding for 3D points
-                point_batches[i] = np.vstack([points, padding])
-                label_batches[i] = np.hstack([labels, np.zeros(self.max_points - labels.shape[0])])
+            else:
+                point_batches[i, :num_points] = points
+                label_batches[i, :num_points] = labels
 
         return point_batches, label_batches
 
@@ -53,11 +54,7 @@ def bds_collate_fn(batch):
     points = torch.cat(points_list, dim=0)  # (batch_size * mini_batch_size, max_points, 3)
     labels = torch.cat(labels_list, dim=0)  # (batch_size * mini_batch_size, max_points)
 
-    # Create the batch index tensor for PyG
-    batch_size = len(points_list)
-    batch_ten = torch.arange(batch_size).repeat_interleave(points_list[0].shape[0])  # Shape: (num_points_total,)
-
-    return points, labels, batch_ten
+    return points, labels
 
 class StratifiedDownsample:
     def __init__(self, max_points=1024):
