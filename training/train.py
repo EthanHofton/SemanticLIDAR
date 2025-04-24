@@ -148,7 +148,7 @@ def train():
         print(f"\tTrainable parameters: {trainable_params}")
 
     for epoch in range(epoch_offset, run_config.epochs+epoch_offset):
-        epoch_loss, epoch_iou = train_epoch(epoch, run_config.epochs + epoch_offset, model, optimizer, loss, train_dataloader, Args.args.device)
+        epoch_loss, epoch_iou = train_epoch(epoch, run_config.epochs + epoch_offset, model, optimizer, loss, train_dataloader)
         print("Epoch complete, validating...")
         val_mIoU, val_loss, confusion_matrix, IoU = val(model, valid_dataloader, loss)
         print(f"Validation complete: val_loss: {val_loss} - val_iou: {val_mIoU}")
